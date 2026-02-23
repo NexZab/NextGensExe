@@ -1,0 +1,40 @@
+name: Build Plugin
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Strip Broken Dependencies
+        run: |
+          # 1. Completely remove the MDLib dependency from the pom.xml
+          # This stops Maven from even looking for it.
+          sed -i '/<groupId>com.github.mdaffa48<\/groupId>/,/<\/dependency>/d' pom.xml
+          
+          # 2. Fix BentoBox and other repos
+          sed -i 's/<version>LATEST<\/version>/<version>3.3<\/version>/g' pom.xml
+          sed -i 's/<version>3.0.4-SNAPSHOT<\/version>/<version>3.0.4<\/version>/g' pom.xml
+          sed -i 's/<version>1.20.2-R0.1-SNAPSHOT<\/version>/<version>1.21.4-R0.1-SNAPSHOT<\/version>/g' pom.xml
+          sed -i 's/<version>1.21.4-R0.1-SNAPSHOT<\/version>/<version>2.7.0<\/version>/g' pom.xml
+          
+          # 3. Fix the plugin.yml path
+          sed -i 's/main: .*/main: com.muhammaddaffa.nextgens.NextGens/' src/main/resources/plugin.yml
+
+      - name: Build with Maven
+        # We add -fae (Fail At End) so it tries to build everything possible
+        run: mvn clean package -DskipTests -U -fae
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextGens-JAR
+          path: target/NextGens-*.jar
+          
