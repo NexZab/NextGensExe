@@ -1,0 +1,40 @@
+name: Build Plugin
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Fix Dependencies and MDLib
+        run: |
+          # Fix MDLib / JitPack issue
+          # This ensures JitPack is properly recognized as a repository
+          sed -i '/<repositories>/a \        <repository>\n            <id>jitpack.io<\/id>\n            <url>https://jitpack.io<\/url>\n        <\/repository>' pom.xml
+          
+          # Fix the BentoBox and FabledSkyBlock errors from before
+          sed -i 's/<version>LATEST<\/version>/<version>3.3<\/version>/g' pom.xml
+          sed -i 's/<version>3.0.4-SNAPSHOT<\/version>/<version>3.0.4<\/version>/g' pom.xml
+          sed -i 's/<version>1.20.2-R0.1-SNAPSHOT<\/version>/<version>1.21.4-R0.1-SNAPSHOT<\/version>/g' pom.xml
+          sed -i 's/<version>1.21.4-R0.1-SNAPSHOT<\/version>/<version>2.7.0<\/version>/g' pom.xml
+          
+          # Force the main class path
+          sed -i 's/main: .*/main: com.muhammaddaffa.nextgens.NextGens/' src/main/resources/plugin.yml
+
+      - name: Build with Maven
+        # We use -U to force an update of all dependencies from JitPack
+        run: mvn clean package -DskipTests -U
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextGens-JAR
+          path: target/NextGens-*.jar
+          
