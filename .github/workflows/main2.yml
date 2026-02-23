@@ -1,0 +1,39 @@
+name: Build Plugin
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Apply Compatibility Fixes
+        run: |
+          # 1. Fix the AdvancedChests 'LATEST' issue
+          sed -i 's/<version>LATEST<\/version>/<version>3.3<\/version>/g' pom.xml
+          
+          # 2. Fix the FabledSkyBlock version
+          sed -i 's/<version>3.0.4-SNAPSHOT<\/version>/<version>3.0.4<\/version>/g' pom.xml
+          
+          # 3. Fix the BentoBox version conflict for 1.21
+          sed -i 's/<version>1.20.2-R0.1-SNAPSHOT<\/version>/<version>1.21.4-R0.1-SNAPSHOT<\/version>/g' pom.xml
+          sed -i 's/<version>1.21.4-R0.1-SNAPSHOT<\/version>/<version>2.7.0<\/version>/g' pom.xml
+          
+          # 4. Fix the plugin.yml main class path
+          sed -i 's/main: .*/main: com.muhammaddaffa.nextgens.NextGens/' src/main/resources/plugin.yml
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextGens-JAR
+          path: target/NextGens-*.jar
+          
